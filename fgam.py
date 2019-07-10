@@ -48,10 +48,10 @@ print('Loading dataset...')
 data_train = MyData(data_type='train', upsampling=True)
 data_valid = MyData(data_type='valid')
 data_test = MyData(data_type='test')
-dim_modifiable = 20
-dim_unmodifiable = 10
+dim_time_varying = 20
+dim_static = 10
 
-model = FGAM(n_classes, dim_modifiable, dim_unmodifiable,
+model = FGAM(n_classes, dim_time_varying, dim_static,
              args.embedding, args.nhid, args.batch_norm)
 model.cuda()
 log_tr = LogMeters(args.prefix + args.optimizer + '_Train', n_classes)
@@ -81,13 +81,13 @@ def train(epoch, data_loader, log):
     model.train()
     log.reset()
     total_loss, total_batches = 0.0, 0.0
-    for batch_idx, (unmodifiables, modifiables, targets) in enumerate(iter(data_loader)):
-        for idx in range(dim_modifiable):
-            modifiables[idx] = modifiables[idx].cuda()
-        unmodifiables = unmodifiables.cuda()
+    for batch_idx, (static, time_variying, targets) in enumerate(iter(data_loader)):
+        for idx in range(dim_time_varying):
+            time_variying[idx] = time_variying[idx].cuda()
+        static = static.cuda()
         targets = targets.squeeze().long().cuda()
         optimizer.zero_grad()
-        outputs = F.log_softmax(model(unmodifiables, modifiables), dim=1)
+        outputs = F.log_softmax(model(static, time_variying), dim=1)
         log.update(outputs, targets)
         loss = F.nll_loss(outputs, targets)
         total_loss += loss
@@ -102,12 +102,12 @@ def train(epoch, data_loader, log):
 def test(epoch, data_loader, log):
     model.eval()
     log.reset()
-    for batch_idx, (unmodifiables, modifiables, targets) in enumerate(iter(data_loader)):
-        unmodifiables = unmodifiables.cuda()
-        for idx in range(dim_modifiable):
-            modifiables[idx] = modifiables[idx].cuda()
+    for batch_idx, (static, time_variying, targets) in enumerate(iter(data_loader)):
+        static = static.cuda()
+        for idx in range(dim_time_varying):
+            time_variying[idx] = time_variying[idx].cuda()
         targets = targets.squeeze().long().cuda()
-        outputs = F.log_softmax(model(unmodifiables, modifiables), dim=1)
+        outputs = F.log_softmax(model(static, time_variying), dim=1)
         log.update(outputs, targets)
     log.printLog(epoch)
 
